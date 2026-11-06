@@ -1,0 +1,123 @@
+# ============================================================================
+# Model Registry — one distinct model per LLM role.
+#
+# TWO MODES:
+#   interim_openai : every role runs on a DIFFERENT OpenAI model, no repeats.
+#                    Design law 2 (distinct organizational families) is RELAXED
+#                    here because only an OpenAI key is available. The intent of
+#                    the law — no two roles are near-copies — is approximated by
+#                    picking genuinely different OpenAI models (capability tier +
+#                    reasoning vs non-reasoning) with zero repetition.
+#   target_family  : the production roster. Nine roles, nine distinct organizational
+#                    families, selected 2026-09-26 against the live OpenRouter catalogue
+#                    (458 models, matched by exact id + verified pricing). Each seat was
+#                    chosen for the failure mode it actually faces, not by capability
+#                    rank — see the per-role `why` keys below.
+#
+# Circularity constraints enforced by this roster (each is pairwise and separately
+# arguable, which a flat "no repeats anywhere" rule is not):
+#   - arbiter shares no family with proponent, opponent or scientist_pool, whose text
+#     it compiles and implicitly weights;
+#   - proponent != opponent, and the two sit in the same capability band, so the SIT
+#     delta measures evidential support rather than which model argues better;
+#   - premise_generation != scientist_pool, so no scientist testifies on premises it
+#     wrote itself;
+#   - scientist_pool differs from both debaters, closing the preference-leakage path.
+# Note that SIT scoring itself is deterministic (local NLI, src/debate/engine.py), so
+# no LLM scores anything — the bias surface is generation and compilation only.
+#
+# The `active` key selects which column the loader uses.
+# `premise_generation` and `scientist_pool` MUST stay different models: a
+# scientist must never testify on premises it wrote itself.
+# ============================================================================
+
+active: target_family    # OpenRouter roster. Paste a funded OPENROUTER_API_KEY into
+                         # .env and run; set to "interim_openai" to fall back to the
+                         # OpenAI-only column.
+
+roles:
+
+  stakeholder_extraction:
+    interim_openai: { provider: openai, model: gpt-4.1-nano, temperature: 0.0 }
+    target_family:  { provider: openrouter, model: google/gemini-3.1-flash-lite, temperature: 0.0 }
+    note: "Classification, forced JSON. Cheapest tier is fine."
+    why: >
+      Schema-constrained extraction, smallest load in the pipeline (616 in / 149 out measured). On
+      ly requirement is faithful JSON that invents no stakeholder absent from the case text. $0.25
+      /$1.50 per M.
+
+  action_decomposition:
+    interim_openai: { provider: openai, model: gpt-4o-mini, temperature: 0.2 }
+    target_family:  { provider: openrouter, model: qwen/qwen-plus, temperature: 0.2 }
+    note: "Structured decomposition of acts / omissions / alternatives."
+    why: >
+      Bounded decomposition into acts / omissions / alternatives (323 in / 106 out). Flagship Qwen
+       rather than a flash tier because this output seeds decision_generation, so a missed alterna
+      tive propagates downstream. $0.78/$3.90 per M — under half a cent for six cases.
+
+  decision_generation:
+    interim_openai: { provider: openai, model: gpt-4.1-mini, temperature: 0.4 }
+    target_family:  { provider: openrouter, model: anthropic/claude-sonnet-5, temperature: 0.4 }
+    note: "Bounded creative generation + feasibility filtering."
+    why: >
+      Highest mode-collapse risk in the pipeline: must produce genuinely distinct alternatives, no
+      t reworded variants of one. Strongest available on output diversity under structured prompti
+      ng. $2/$10 per M, but at 426 in / 105 out that is ~1 cent for all six cases.
+
+  premise_generation:
+    interim_openai: { provider: openai, model: o4-mini, temperature: 1.0, reasoning: true }
+    target_family:  { provider: openrouter, model: x-ai/grok-4.7, temperature: 0.3 }
+    note: "Falsifiable claims + discipline tags. MUST differ from scientist_pool."
+    why: >
+      Highest-leverage seat: 14,653 output tokens per case (42% of all output), and its premises d
+      rive testimony, debate and SIT scoring. Needs falsifiable discipline-tagged claims without c
+      onverging on the same four premises each run. MUST differ from scientist_pool. $1.60/$4.80.
+
+  scientist_pool:
+    interim_openai: { provider: openai, model: gpt-4o, temperature: 0.3 }
+    target_family:  { provider: openrouter, model: deepseek/deepseek-v4-pro-0813, temperature: 0.3 }
+    note: "7 personas share this one model; they testify on disjoint premise sets."
+    why: >
+      Highest call count (17 per case), so unit price dominates. Outside the family of both debate
+      rs and the arbiter, which closes the preference-leakage path where a debater over-trusts tes
+      timony from its own family. $0.264/$0.792 per M.
+
+  proponent:
+    # Debaters are the highest-volume LLM calls; use FAST non-reasoning models here
+    # (o1/o3 moved to the low-volume arbiter/socratic roles) to keep the CPU-side run
+    # tractable without a GPU. Distinct from opponent and scientist_pool.
+    interim_openai: { provider: openai, model: gpt-4.1, temperature: 0.5 }
+    target_family:  { provider: openrouter, model: moonshotai/kimi-k2.5, temperature: 0.5 }
+    note: "Adversarial reasoning over testimony. Must differ from opponent above all."
+    why: >
+      Highest-volume role (20,350 in / 5,982 out over 11 calls). Chosen for parity with the oppone
+      nt rather than peak strength: a materially stronger debater turns the SIT delta into a measu
+      re of argumentation skill. 262k context holds accumulated transcripts. $0.45/$2.25.
+
+  opponent:
+    interim_openai: { provider: openai, model: gpt-4-turbo, temperature: 0.5 }
+    target_family:  { provider: openrouter, model: z-ai/glm-5.3, temperature: 0.5 }
+    note: "Adversarial rebuttal-focused counsel. Distinct model from proponent."
+    why: >
+      Different family from the proponent and close to it in tier — within ~20% on input price. Th
+      at parity is the point; it is what keeps the SIT delta interpretable. $0.379/$1.192 per M.
+
+  arbiter:
+    # Low volume (one call per case) but reads all transcripts — a reasoning model
+    # with a large context is worth the latency here.
+    interim_openai: { provider: openai, model: o1, temperature: 1.0, reasoning: true }
+    target_family:  { provider: openrouter, model: openai/gpt-5.4-mini, temperature: 0.2 }
+    note: "Long-context compilation of all n transcripts. Needs the biggest window."
+    why: >
+      Structurally an aggregator, not a generator: compiles all n transcripts, adds nothing, issue
+      s no verdict — so faithfulness matters more than reasoning depth. Must not share a family wi
+      th the debaters or scientists whose text it weighs, the tightest constraint on the roster. $
+      0.75/$4.50 per M.
+
+  socratic:
+    interim_openai: { provider: openai, model: o3, temperature: 1.0, reasoning: true }
+    target_family:  { provider: openrouter, model: mistralai/mistral-large-2512, temperature: 0.5 }
+    note: "Question-driven dialogue. Distinct from the arbiter on purpose."
+    why: >
+      Optional interactive dialogue behind interactive_gate — zero calls, zero cost in a batch run
+      . Kept distinct from the arbiter on purpose. $0.50/$1.50 per M.

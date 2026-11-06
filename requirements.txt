@@ -1,0 +1,28 @@
+# Core
+python-dotenv>=1.0.0
+pydantic>=2.6.0
+pyyaml>=6.0
+
+# LLM
+openai>=1.40.0
+
+# Embeddings + vector store
+sentence-transformers>=2.7.0
+faiss-cpu>=1.8.0
+numpy>=1.26.0
+
+# NLI (entailment — the no-LLM-scoring backbone)
+transformers>=4.40.0
+torch>=2.2.0
+
+# Graph structures (TEG)
+networkx>=3.2
+
+# Evidence source APIs
+requests>=2.31.0
+
+# Orchestration (used from Phase 8 onward)
+langgraph>=0.2.0
+
+# Testing
+pytest>=8.0.0

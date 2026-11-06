@@ -1,0 +1,119 @@
+================================================================================
+ Polyphony — RUN COMMANDS
+ Every runnable path, in the order you need it.
+================================================================================
+
+Dataset : data/six_cases.csv  (6 dilemmas, ids 001..006, column "Moral Case")
+Outputs : outputs/<variant>/<NN_step>/<sample_id>/ + outputs/<variant>/full_pipeline/<sample_id>.json
+          (outputs/ is gitignored)
+Resume  : each variant has its own ledger outputs/<variant>/processed_samples.txt
+          -> re-running the SAME command skips finished samples and resumes.
+Rule    : every new run gets a NEW --variant and (for pipeline runs) a NEW --worker.
+          A variant folder records the PIPELINE_VERSION it was started under and
+          refuses to resume under a different one.
+Tip     : run ONE case at a time (--sample 001), check it, then the next.
+
+--------------------------------------------------------------------------------
+ 0) SETUP
+--------------------------------------------------------------------------------
+git clone <this repository> polyphony && cd polyphony
+python -m venv .venv            # Python 3.10+
+pip install -r requirements.txt
+cp .env.example .env            # then fill it in:
+#   OPENROUTER_API_KEY=...   required: every role of every run goes through OpenRouter
+#   OPENALEX_API_KEY=...     required in practice: keyless OpenAlex is ~100 searches/day
+#   CONTACT_EMAIL=...        polite pool for OpenAlex / Crossref
+#   NCBI_API_KEY=...         optional, raises the PubMed rate limit
+# The roster is config/models.yaml (active: target_family). OPENAI_API_KEY is needed only
+# if you switch to active: interim_openai.
+
+# The first run downloads all-MiniLM-L6-v2 (~90 MB) and
+# MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli (~450 MB). Once, needs internet, free.
+
+--------------------------------------------------------------------------------
+ 1) PREFLIGHT  (free or cents; catches a bad config before money is spent)
+--------------------------------------------------------------------------------
+python scripts/validate_models.py               # role -> model table; fails if two roles share a family
+python scripts/validate_models.py --check-live  # also checks every id against the OpenRouter catalogue
+python scripts/probe_models.py                  # one realistic call per role (a few cents)
+python -m pytest tests/ -q                      # offline, must be green
+
+--------------------------------------------------------------------------------
+ 2) THE TEN SYSTEMS IN THE PAPER
+--------------------------------------------------------------------------------
+# Each line is run once per case: add --sample 001, check, then --sample 002, ...
+# Without --sample it runs all six in order (resumable).
+
+# -- full system
+python scripts/run_full.py --variant main_audit --worker main_audit
+
+# -- ablations (pipeline behaviour set by --ablation, folder by --variant;
+#    without --variant the folder is outputs/abl_<ablation>/)
+python scripts/run_full.py --ablation no_decision_decomp --variant abl_no_decision_decomp_audit2 --worker ndd_audit2
+python scripts/run_full.py --ablation no_testimony       --variant abl_no_testimony_audit       --worker nt_audit
+python scripts/run_full.py --ablation no_pmer            --worker pmer     # -> outputs/abl_no_pmer
+python scripts/run_full.py --ablation fixed_panel        --worker panel    # -> outputs/abl_fixed_panel
+
+# -- baselines
+# B1 single LLM, CoT self-consistency (qwen/qwen-plus, k=5, T=0.7, same-main-choice vote)
+python scripts/run_baseline.py --baseline b1 --variant baseline_b1_audit2
+# B2 single-pass RAG on the evidence graph of the FINISHED main run (no retrieval of its own)
+python scripts/run_baseline.py --baseline b2 --teg-from main_audit --variant baseline_b2_audit
+# B3 Du et al. multi-agent debate (3 agents, 2 rounds, same-main-choice vote)
+python scripts/run_baseline.py --baseline b3 --variant baseline_b3_audit
+# B4 the full pipeline with every role on ONE model (DeepSeek V3.2), own corpus. As slow as main.
+python scripts/run_baseline.py --baseline b4 --model deepseek/deepseek-v3.2 --variant baseline_b4_v32 --worker b4_v32
+# B5 original CogniAlign (4 scientist personas, GPT-4o, T=0.2, concluding arbiter)
+python scripts/run_baseline.py --baseline b5 --variant baseline_b5_audit
+# (--model only affects B4/B5 and defaults to gpt-4o, reached as openai/gpt-4o on OpenRouter;
+#  B1-B3 take their models from the roster. Other B1/B3 knobs: --k, --agents, --rounds)
+
+--------------------------------------------------------------------------------
+ 3) AFTER EACH RUN  (per variant; add --sample 00N to do one case)
+--------------------------------------------------------------------------------
+# B1/B3 only: re-cluster the final answers with the vote judge (claude-sonnet-5, T=0)
+python scripts/revote_baseline.py --variant baseline_b1_audit2 --write
+python scripts/revote_baseline.py --variant baseline_b3_audit --write
+
+# faithfulness (CPU, ~17 s per sentence, ~30 min per full-system case; no API cost).
+# Skips B1 (no source materials). Run ONE scoring process at a time.
+python scripts/recompute_faithfulness.py --variant main_audit --write
+
+# evaluation report -> outputs/<variant>/11_eval/eval_report.{json,md} + human_eval/<sid>.md
+python scripts/build_eval.py --variant main_audit
+
+# readable case text -> outputs/<variant>/11_eval/readable/
+python scripts/export_case_text.py --variant main_audit
+
+# tokens, time and cost per role -> outputs/<variant>/telemetry/token_report.{json,md}
+python scripts/token_report.py --variant main_audit
+python scripts/token_report.py --variant main_audit --project 20   # optional: project the averages to N cases
+
+--------------------------------------------------------------------------------
+ 4) COST AND TIME
+--------------------------------------------------------------------------------
+# Measured cost of one clean run (OpenRouter list prices, 28 Oct 2026), US$ per case:
+#   Full 0.456 | -Decomp 0.093 | -Testimony 0.323 | -P-MER 0.494 | Fixed panel 0.452
+#   B1 0.008 | B2 0.014 | B3 0.014 | B4 0.097 | B5 0.076
+# A full-system case takes 80-130 min wall clock and $0.14-0.21 of OpenAlex's $1/day,
+# so at most five pipeline cases fit in one OpenAlex day (resets 00:00 UTC).
+
+--------------------------------------------------------------------------------
+ 5) RESUME / WHEN SOMETHING GOES WRONG
+--------------------------------------------------------------------------------
+# A run dies (crash, power cut, quota): re-run the SAME command. The ledger skips
+# finished cases; a killed case is rolled back and redone.
+# OpenAlex quota exhausted: the case fails cleanly; wait for 00:00 UTC, re-run.
+# A model 400s/404s: ids and prices on OpenRouter move. Check
+#   https://openrouter.ai/models, fix that one line under target_family in
+#   config/models.yaml, re-run validate_models.py.
+# Costs look high: compare completion_tokens per role in token_report.py; billed
+#   reasoning tokens are the usual cause.
+# Logs: outputs/<variant>/telemetry/calls.jsonl (successful LLM calls),
+#   telemetry/retrieval.jsonl (local vs live evidence), telemetry/events.jsonl,
+#   runs/llm_calls.jsonl (failures and retries only).
+# A run that looks frozen is usually NLI on the CPU: if python keeps gaining CPU time,
+#   it is working.
+# Watch mode (Socratic Q&A after each case; Y within 10 s, else auto-advance):
+python scripts/run_full.py --variant <new_variant> --worker <new_worker> --sample 001 --interactive
+================================================================================

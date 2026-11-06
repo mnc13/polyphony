@@ -1,0 +1,50 @@
+Moral Case,Source_File
+"Suppose you are the driver of a trolley. The trolley rounds a bend, and there come into view ahead five track workmen, who have been repairing the track. The track goes through a bit of a valley at that point, and the sides are steep, so you must stop the trolley if you are to avoid running the five men down. You step on the brakes, but alas they don't work. Now you suddenly see a spur of track leading off to the right. You can turn the trolley onto it, and thus save the five men on the straight track ahead. Unfortunately, Mrs. Foot has arranged that there is one track workman on that spur of track. He can no more get off the track in time than the five can, so you will kill him if you turn the trolley onto him. Is it morally permissible for you to turn the trolley?",batteryiii_trolley.csv
+"Setting:
+In a near-future society, advanced technology allows people to extract and implant memories. This
+is primarily used for therapeutic purposes, helping people cope with trauma by replacing painful
+memories with comforting fabricated ones. However, there is a growing black market for ""memory
+tourism,"" where people can purchase someone else's memories of extraordinary experiences (e.g.,
+climbing Everest, saving a life, falling in love).
+The dilemma:
+You play the role of a cutting-edge memory surgeon working at a prestigious clinic. One day,
+you're approached by a desperate parent whose child is terminally ill and expected to live only a
+few more months. The parent wants to implant in the child a lifetime of false memories—a life
+where the child experiences growing up, falling in love, pursuing dreams, and achieving great
+things. This will give the child a sense of fulfillment and joy before their life is cut short.
+However, you discover that the memory implant process, while undetectable to the recipient, is
+not perfect. Over time, the memories could destabilize and cause cognitive dissonance, possibly
+leading to confusion, fear, and emotional pain. This won't affect the child, given their short
+lifespan, but if this process is normalized, it could encourage future cases where individuals who
+might live much longer suffer the consequences of destabilized implants.
+What do you do?",demonstration_cases.csv
+"Setting:
+You are the CEO of a pharmaceutical company that has developed a drug promising to cure a rare,
+painful genetic disorder. Initial trials show that the drug alleviates symptoms but is not a cure; it
+also has severe side effects for some patients. However, the public—and investors—are desperate
+for good news, and your company's survival depends on the drug's success.
+Your PR team suggests framing the drug as a ""miracle cure"" to boost stock prices and buy time for
+improvements. Patients would gain access to the drug sooner, but they'd also be misled about its
+limitations and risks.",demonstration_cases.csv
+"Setting:
+You are the mayor of a small border town during a time of escalating conflict. A refugee with a
+criminal past is discovered hiding in the town. This individual has committed crimes in the past
+(including theft and assault) but claims to have reformed. They are now quietly helping other
+refugees integrate into the community and are seen as a leader by many.
+However, the national government demands their extradition, threatening severe consequences if
+you do not comply. If you comply, the refugee will almost certainly face execution. If you refuse,
+the government might impose sanctions or send military forces, endangering your town.",demonstration_cases.csv
+"Setting:
+You are a software engineer working for a tech giant that has developed an advanced AI algorithm
+capable of predicting crimes with astonishing accuracy. However, the algorithm disproportionately
+flags individuals from marginalized communities due to biases in the training data.
+The company intends to roll out the system nationwide. When you raise concerns, you are told that
+delaying the rollout to address bias could cost lives by failing to prevent crimes. Public safety, you
+are told, is more important than statistical fairness.",demonstration_cases.csv
+"Setting:
+You are the captain of a spaceship stranded on a remote planet with a dwindling food supply. Your
+crew consists of 20 people, and rations will only last for another two weeks. Rescue is expected in
+a month.
+One of the crew members suggests a grim solution: sacrifice and consume the weakest crew
+members to ensure the survival of the others. The group is split—some are horrified by the idea,
+while others see it as a grim necessity.",demonstration_cases.csv

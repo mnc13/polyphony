@@ -1,0 +1,36 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Data artifacts (generated at runtime)
+data/vectordb/
+data/sit.db
+runs/
+outputs/
+logs/
+
+# Models cache
+.cache/
+*.index
+
+# OS
+.DS_Store
+Thumbs.db
+data/vectordb_backup/
+data/worker_*/
+
+# Backup written by edits to the model registry
+config/models.yaml.bak
+
+# Archived prior runs
+archive/
+
+# Handoffs are local only, never committed
+HANDOFF*.md
