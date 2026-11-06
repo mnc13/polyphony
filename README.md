@@ -38,7 +38,7 @@ flowchart TD
 
     subgraph LANE ["for every decision"]
         direction TB
-        P["Premise generation<br/>Typed Premise Set, discipline-tagged"] --> R["P-MER retrieval<br/>PubMed · Europe PMC · OpenAlex · Crossref<br/>Typed Evidence Graph"]
+        P["Premise generation<br/>Typed Premise Set, discipline-tagged"] --> R["P-MER retrieval<br/>PubMed · Europe PMC · OpenAlex<br/>Typed Evidence Graph"]
         R --> T["Scientist testimony<br/>2–7 disciplines, chosen by the premises"]
         T --> G["Proponent vs Opponent debate<br/>progressive retrieval each round<br/>every claim logged to the SIT"]
     end
@@ -269,9 +269,11 @@ polyphony/
 
 <br>
 
-PubMed (E-utilities), Europe PMC, OpenAlex and Crossref, all free. A Semantic Scholar
-client is included and switched off (`use_semantic_scholar = False`) because it needs a
-key; every reported run used the same four sources. Every fetched abstract is chunked,
+PubMed (E-utilities), Europe PMC and OpenAlex, all free. Crossref is queried only as a
+last resort when every other source returns nothing; in the main run all admitted
+evidence came from the first three. A Semantic Scholar client is included and switched
+off (`use_semantic_scholar = False`) because it needs a key, so every variant searches
+the same sources. Every fetched abstract is chunked,
 embedded and kept in a per-worker FAISS corpus, so retrieval is local-first and the
 corpus grows across cases within a run. Each variant starts from an empty corpus.
 
